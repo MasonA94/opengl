@@ -2,15 +2,15 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "GDB Launch",
+      "name": "GDB Launch (Linux)",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/build/simple_gl${env:OS == 'Windows_NT' ? '.exe' : ''}",
+      "program": "${workspaceFolder}/build/simple_gl",
       "args": [],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
       "MIMode": "gdb",
-      "miDebuggerPath": "C:/msys64/mingw64/bin/gdb.exe",
+      "miDebuggerPath": "/usr/bin/gdb",
       "preLaunchTask": "CMake: build",
       "setupCommands": [
         { "text": "-enable-pretty-printing", "description": "enable pretty printing", "ignoreFailures": true }

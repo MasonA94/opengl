@@ -2,7 +2,7 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <cmath>
-#include <C:\Users\mason\simple_gl\src\Shader.h>
+#include "Shader.h"
 #include <filesystem>
 
 int main() {
@@ -17,7 +17,7 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // Creates a window and context
-    GLFWwindow* window = glfwCreateWindow(2560, 1440, "simple_gl", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(1920, 1080, "simple_gl", nullptr, nullptr);
     if (!window) {
         std::cerr << "Failed to create GLFW window\n";
         glfwTerminate();
@@ -30,6 +30,9 @@ int main() {
         std::cerr << "Failed to initialize GLAD\n";
         return -1;
     }
+
+
+
     // Defines three 3D positions of the triangle
     float verts[] = {
         -0.5f,  -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,  
@@ -57,7 +60,7 @@ int main() {
         1, 2, 3
     };
 
-    Shader ourShader("C:/Users/mason/simple_gl/shaders/3.3.shader.vs", "C:/Users/mason/simple_gl/shaders/3.3.shader.fs");
+    Shader ourShader("shaders/3.3.shader.vs", "shaders/3.3.shader.fs");
     std::cout << std::filesystem::current_path() << std::endl;
 
     GLuint vao, vbo, ebo, vao2, vbo2;
