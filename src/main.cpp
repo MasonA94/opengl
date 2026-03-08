@@ -30,9 +30,6 @@ int main() {
         std::cerr << "Failed to initialize GLAD\n";
         return -1;
     }
-
-
-
     // Defines three 3D positions of the triangle
     float verts[] = {
         -0.5f,  -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,  
@@ -61,7 +58,6 @@ int main() {
     };
 
     Shader ourShader("shaders/3.3.shader.vs", "shaders/3.3.shader.fs");
-    std::cout << std::filesystem::current_path() << std::endl;
 
     GLuint vao, vbo, ebo, vao2, vbo2;
     // Creates VAO, stores the vertex attribute config
@@ -114,6 +110,7 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT);
 
         ourShader.use();
+
         glBindVertexArray(vao);
         glDrawArrays(GL_TRIANGLES, 0, 3);
 
