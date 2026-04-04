@@ -10,14 +10,17 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include"camera.h"
+#include"particle.h"
+#include<vector>
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
+void drawParticle(const Particle&, const Shader&);
 
-const unsigned int SCR_WIDTH = 1920;
-const unsigned int SCR_HEIGHT = 1080;
+const unsigned int SCR_WIDTH = 2560;
+const unsigned int SCR_HEIGHT = 1440;
 
 // camera
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
@@ -42,7 +45,7 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // Creates a window and context
-    GLFWwindow* window = glfwCreateWindow(1920, 1080, "simple_gl", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "simple_gl", nullptr, nullptr);
     if (!window) {
         std::cerr << "Failed to create GLFW window\n";
         glfwTerminate();
@@ -128,12 +131,6 @@ int main() {
     glm::vec3(-1.3f,  1.0f, -1.5f)  
     };
 
-    // texture coords
-    float texCoords[] {
-        0.0f, 0.0f, 
-        1.0f, 0.0f,
-        0.5f, 1.0f
-    };
 
     unsigned int indices[] = {
         0, 1, 3,
@@ -168,61 +165,34 @@ int main() {
     // position attribute
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-    // texture coord attribute
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    /*
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3* sizeof(float)));
-    glEnableVertexAttribArray(1);
-    
-    glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0); 
-    */
-    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-    // texture stuff
-    unsigned int texture;
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    // set the texture wrapping/filtering options (on the currently bound texture object)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    // load and generate the texture
-    int width, height, nrChannels;
-    unsigned char *data = stbi_load("textures/container.jpg", &width, &height, &nrChannels, 0);
-    if (data)
-    {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    }
-    else
-    {
-        std::cout << "Failed to load texture" << std::endl;
-    }
-    stbi_image_free(data);
 
     // Render loop
+    std::vector<Particle> particles;
+    int numParticles = 0;
+    Particle p;
+    p.acceleration = glm::vec3(0.0f, -9.8f, 0.0f);
+    p.position = glm::vec3(0.0f, 0.0f, 0.0f);
+
+
     while (!glfwWindowShouldClose(window)) {
 
         // per-frame time logic
-        // --------------------
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
         // input
-        // -----
         processInput(window);
+        if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
+            p.position = glm::vec3(0.0f, 0.0f, 0.0f);
+            p.velocity = glm::vec3(0.0f, 0.0f, 0.0f);
+        }
+        p.updateParticle(p, deltaTime);
+        p.velocity *= 0.999f;
         glClearColor(0.1f,0.1f,0.12f,1.0f);
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glBindTexture(GL_TEXTURE_2D, texture);
         ourShader.use();
-
-        // create transformations
     
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 
@@ -232,23 +202,19 @@ int main() {
         glm::mat4 view = camera.GetViewMatrix();
         ourShader.setMat4("view", view);
 
-        glBindVertexArray(vao);
+        glBindVertexArray(vao);        
+        // draw the container box
+        glm::mat4 boxModel = glm::mat4(1.0f);
+        boxModel = glm::scale(boxModel, glm::vec3(2.0f)); // matches bounds [-1, 1]
+        ourShader.setMat4("model", boxModel);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-        for(unsigned int i = 0; i < 10; i++)
-        {
-            glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, cubePositions[i]);
-            float angle = 20.0f * i; 
-            model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-            ourShader.setMat4("model", model);
-
-            glDrawArrays(GL_TRIANGLES, 0, 36);
-        }
-
+        drawParticle(p, ourShader);
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
-
     glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);
     //glDeleteBuffers(1, &vbo2);
@@ -312,4 +278,13 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     // make sure the viewport matches the new window dimensions; note that width and 
     // height will be significantly larger than specified on retina displays.
     glViewport(0, 0, width, height);
+}
+
+void drawParticle(const Particle& p, const Shader& s) {
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::translate(model, p.position);
+    model = glm::scale(model, glm::vec3(0.05f));
+
+    s.setMat4("model", model);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
 }
