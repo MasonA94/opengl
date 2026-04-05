@@ -18,6 +18,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
 void drawParticle(const Particle&, const Shader&);
+float randFloat(float min, float max);
 
 const unsigned int SCR_WIDTH = 2560;
 const unsigned int SCR_HEIGHT = 1440;
@@ -168,11 +169,20 @@ int main() {
 
     // Render loop
     std::vector<Particle> particles;
-    int numParticles = 0;
+    int numParticles = 10;
     Particle p;
     p.acceleration = glm::vec3(0.0f, -9.8f, 0.0f);
     p.position = glm::vec3(0.0f, 0.0f, 0.0f);
 
+    // create multiple particle objects
+    for (int i = 0; i < numParticles; i++) {
+        particles.push_back(Particle());
+    }
+
+    for (auto& p : particles) {
+        p.acceleration = glm::vec3(0.0f, -9.8f, 0.0f);
+        p.position = glm::vec3(randFloat(-1, 1), randFloat(-1, 1), randFloat(-1, 1));
+    }
 
     while (!glfwWindowShouldClose(window)) {
 
@@ -186,9 +196,22 @@ int main() {
         if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
             p.position = glm::vec3(0.0f, 0.0f, 0.0f);
             p.velocity = glm::vec3(0.0f, 0.0f, 0.0f);
+            for (auto& p : particles) {
+                p.velocity = glm::vec3(0.0f, 0.0f, 0.0f);
+                // may want to find a way later to store initial values for each and
+                // reset them to that
+                p.position = glm::vec3(randFloat(-1, 1), randFloat(-1, 1), randFloat(-1, 1));
+            }
         }
+
         p.updateParticle(p, deltaTime);
         p.velocity *= 0.999f;
+
+        for (auto& p2 : particles) {
+            p2.updateParticle(p2, deltaTime);
+            p2.velocity *= 0.999f;
+        }
+
         glClearColor(0.1f,0.1f,0.12f,1.0f);
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -210,6 +233,10 @@ int main() {
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         glDrawArrays(GL_TRIANGLES, 0, 36);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+        for (auto& p : particles) {
+            drawParticle(p, ourShader);
+        }
 
         drawParticle(p, ourShader);
         glfwSwapBuffers(window);
@@ -287,4 +314,9 @@ void drawParticle(const Particle& p, const Shader& s) {
 
     s.setMat4("model", model);
     glDrawArrays(GL_TRIANGLES, 0, 36);
+}
+
+// random float func for randomized position of particles
+float randFloat(float min, float max) {
+    return min + static_cast<float>(rand()) / RAND_MAX * (max - min);
 }
