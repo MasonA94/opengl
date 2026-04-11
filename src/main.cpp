@@ -19,9 +19,11 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
 void drawParticle(const Particle&, const Shader&);
 float randFloat(float min, float max);
+void ParticleCollision(Particle& p1, Particle& p2);
+void KineticFriction(Particle& p, float frictionCoefficient);
 
-const unsigned int SCR_WIDTH = 2560;
-const unsigned int SCR_HEIGHT = 1440;
+const unsigned int SCR_WIDTH = 1920;
+const unsigned int SCR_HEIGHT = 1080;
 
 // camera
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
@@ -169,19 +171,20 @@ int main() {
 
     // Render loop
     std::vector<Particle> particles;
-    int numParticles = 10;
-    Particle p;
-    p.acceleration = glm::vec3(0.0f, -9.8f, 0.0f);
-    p.position = glm::vec3(0.0f, 0.0f, 0.0f);
+    int numParticles = 100;
 
     // create multiple particle objects
     for (int i = 0; i < numParticles; i++) {
         particles.push_back(Particle());
     }
 
+    // initializes particle values. should probably make a constrctor.
     for (auto& p : particles) {
-        p.acceleration = glm::vec3(0.0f, -9.8f, 0.0f);
-        p.position = glm::vec3(randFloat(-1, 1), randFloat(-1, 1), randFloat(-1, 1));
+        p.acceleration = glm::vec3(randFloat(-0.5, 0.5), -9.8f, randFloat(-0.5, 0.5));
+        p.velocity = glm::vec3(randFloat(-2, 2), randFloat(-2, 2), randFloat(-2, 2));
+        p.position = glm::vec3(randFloat(-1, 1), randFloat(-0.5, 1), randFloat(-1, 1));
+        p.mass = 1.0f;
+        p.radius = 0.043;
     }
 
     while (!glfwWindowShouldClose(window)) {
@@ -194,22 +197,33 @@ int main() {
         // input
         processInput(window);
         if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
-            p.position = glm::vec3(0.0f, 0.0f, 0.0f);
-            p.velocity = glm::vec3(0.0f, 0.0f, 0.0f);
             for (auto& p : particles) {
-                p.velocity = glm::vec3(0.0f, 0.0f, 0.0f);
+                p.velocity = glm::vec3(randFloat(-2, 2), randFloat(-2, 2), randFloat(-2, 2));
                 // may want to find a way later to store initial values for each and
                 // reset them to that
-                p.position = glm::vec3(randFloat(-1, 1), randFloat(-1, 1), randFloat(-1, 1));
+                p.position = glm::vec3(randFloat(-1, 1), randFloat(-0.5, 1), randFloat(-1, 1));
             }
         }
 
-        p.updateParticle(p, deltaTime);
-        p.velocity *= 0.999f;
-
         for (auto& p2 : particles) {
+            // friction update
             p2.updateParticle(p2, deltaTime);
+            // this simulates drag as of rn. can make functino later
             p2.velocity *= 0.999f;
+        }
+
+        // particle collision: WIP
+        for (auto& pout : particles) {
+            for (auto& pin : particles) {
+                ParticleCollision(pout, pin);
+            }
+        }
+
+        // WIP
+        for (auto& p3 : particles) {
+            KineticFriction(p3, 0.02);
+            //std::cout << p3.acceleration.x << std::endl;
+            //std::cout << p3.acceleration.z << std::endl;
         }
 
         glClearColor(0.1f,0.1f,0.12f,1.0f);
@@ -238,7 +252,6 @@ int main() {
             drawParticle(p, ourShader);
         }
 
-        drawParticle(p, ourShader);
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
@@ -319,4 +332,40 @@ void drawParticle(const Particle& p, const Shader& s) {
 // random float func for randomized position of particles
 float randFloat(float min, float max) {
     return min + static_cast<float>(rand()) / RAND_MAX * (max - min);
+}
+
+// particle collide function
+// might have to change it to where to the positions are equal to each other
+// physics wise, this function is correct as of right now since all the partiles have 
+// the same mass so they just exchange velocities. Perfeclty elsastic for now.
+void ParticleCollision(Particle& p1, Particle& p2) {
+    // a vector the points from p2 to p1
+    glm::vec3 delta = p1.position - p2.position;
+    // gets the length of that vector, in this case it's the distance between their centers
+    float dist = glm::length(delta);
+    float minDist = 2.0f * p1.radius;
+
+    if (dist < minDist && dist > 0.0001f) {
+        float overlap = minDist - dist;
+        glm::vec3 dir = delta / dist;
+
+        // separate properly
+        p1.position += dir * (overlap * 0.5f);
+        p2.position -= dir * (overlap * 0.5f);
+
+        // swap velocities
+        std::swap(p1.velocity, p2.velocity);
+    }
+}
+
+// friction function for when particles are sliding on the ground. NOT WORKY
+void KineticFriction(Particle& p, float frictionCoefficient) {
+    // need a better way to calculate since this is something that is ongoing,
+    // meaning it really needs to be set once. Multiplying repeatedly actually makes it go to zero
+    // since it's being mutiplied by a small number over and over again.
+    if (p.position.y - p.radius <= -1) {
+        p.position.y = -1.0f + p.radius;
+        p.acceleration.x *= -(p.mass * 9.8 * frictionCoefficient);
+        p.acceleration.z *= -(p.mass * 9.8 * frictionCoefficient);
+    }
 }
