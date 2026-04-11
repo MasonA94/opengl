@@ -21,8 +21,8 @@ struct Particle {
         p.velocity += p.acceleration * dt;
         p.position += p.velocity * dt;
 
-        glm::vec3 boxMin(-1.0f, -1.0f, -1.0f);
-        glm::vec3 boxMax( 1.0f,  1.0f,  1.0f);
+        glm::vec3 boxMin(-3.0f, -3.0f, -3.0f);
+        glm::vec3 boxMax( 3.0f,  3.0f, 3.0f);
 
         // X walls
         if (p.position.x - p.radius < boxMin.x) {

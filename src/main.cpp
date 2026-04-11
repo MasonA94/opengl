@@ -22,8 +22,9 @@ float randFloat(float min, float max);
 void ParticleCollision(Particle& p1, Particle& p2);
 void KineticFriction(Particle& p, float frictionCoefficient);
 
-const unsigned int SCR_WIDTH = 1920;
-const unsigned int SCR_HEIGHT = 1080;
+const unsigned int SCR_WIDTH = 2560;
+const unsigned int SCR_HEIGHT = 1440;
+const float fixedDt = 1.0f / 60.0f;
 
 // camera
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
@@ -171,7 +172,7 @@ int main() {
 
     // Render loop
     std::vector<Particle> particles;
-    int numParticles = 100;
+    int numParticles = 200;
 
     // create multiple particle objects
     for (int i = 0; i < numParticles; i++) {
@@ -180,12 +181,15 @@ int main() {
 
     // initializes particle values. should probably make a constrctor.
     for (auto& p : particles) {
-        p.acceleration = glm::vec3(randFloat(-0.5, 0.5), -9.8f, randFloat(-0.5, 0.5));
+        p.acceleration = glm::vec3(0, -9.8f, 0);
         p.velocity = glm::vec3(randFloat(-2, 2), randFloat(-2, 2), randFloat(-2, 2));
-        p.position = glm::vec3(randFloat(-1, 1), randFloat(-0.5, 1), randFloat(-1, 1));
+        p.position = glm::vec3(randFloat(-2, 2), randFloat(-1.5, 2), randFloat(-2, 2));
         p.mass = 1.0f;
         p.radius = 0.043;
     }
+
+     lastFrame = static_cast<float>(glfwGetTime());
+     float accumulator = 0.0f;
 
     while (!glfwWindowShouldClose(window)) {
 
@@ -193,37 +197,40 @@ int main() {
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+        accumulator += deltaTime;
 
         // input
         processInput(window);
         if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
             for (auto& p : particles) {
+                p.position = glm::vec3(randFloat(-2, 2), randFloat(-1.5, 2), randFloat(-2, 2));
                 p.velocity = glm::vec3(randFloat(-2, 2), randFloat(-2, 2), randFloat(-2, 2));
                 // may want to find a way later to store initial values for each and
                 // reset them to that
-                p.position = glm::vec3(randFloat(-1, 1), randFloat(-0.5, 1), randFloat(-1, 1));
             }
         }
 
-        for (auto& p2 : particles) {
-            // friction update
-            p2.updateParticle(p2, deltaTime);
-            // this simulates drag as of rn. can make functino later
-            p2.velocity *= 0.999f;
-        }
-
-        // particle collision: WIP
-        for (auto& pout : particles) {
-            for (auto& pin : particles) {
-                ParticleCollision(pout, pin);
+        while (accumulator >= fixedDt) {
+            for (auto& p2 : particles) {
+                // friction update
+                p2.updateParticle(p2, fixedDt);
+                // this simulates drag as of rn. can make functino later
+                p2.velocity *= 0.999f;
             }
-        }
 
-        // WIP
-        for (auto& p3 : particles) {
-            KineticFriction(p3, 0.02);
-            //std::cout << p3.acceleration.x << std::endl;
-            //std::cout << p3.acceleration.z << std::endl;
+            for (size_t i = 0; i < particles.size(); ++i) {
+                for (size_t j = i + 1; j < particles.size(); ++j) {
+                    ParticleCollision(particles[i], particles[j]);
+                }
+            }
+        
+            // WIP 
+            for (auto& p3 : particles) {
+                KineticFriction(p3, 0.02);
+                //std::cout << p3.acceleration.x << std::endl;
+                //std::cout << p3.acceleration.z << std::endl;
+            }
+            accumulator -= fixedDt;
         }
 
         glClearColor(0.1f,0.1f,0.12f,1.0f);
@@ -242,7 +249,7 @@ int main() {
         glBindVertexArray(vao);        
         // draw the container box
         glm::mat4 boxModel = glm::mat4(1.0f);
-        boxModel = glm::scale(boxModel, glm::vec3(2.0f)); // matches bounds [-1, 1]
+        boxModel = glm::scale(boxModel, glm::vec3(6.0f)); // matches bounds [-3, 3]
         ourShader.setMat4("model", boxModel);
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -363,9 +370,9 @@ void KineticFriction(Particle& p, float frictionCoefficient) {
     // need a better way to calculate since this is something that is ongoing,
     // meaning it really needs to be set once. Multiplying repeatedly actually makes it go to zero
     // since it's being mutiplied by a small number over and over again.
-    if (p.position.y - p.radius <= -1) {
-        p.position.y = -1.0f + p.radius;
+    if (p.position.y - p.radius <= -3) {
+        p.position.y = -3.0f + p.radius;
         p.acceleration.x *= -(p.mass * 9.8 * frictionCoefficient);
         p.acceleration.z *= -(p.mass * 9.8 * frictionCoefficient);
     }
-}
+} 
