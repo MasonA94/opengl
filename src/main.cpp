@@ -22,8 +22,8 @@ float randFloat(float min, float max);
 void ParticleCollision(Particle& p1, Particle& p2);
 void KineticFriction(Particle& p, float frictionCoefficient);
 
-const unsigned int SCR_WIDTH = 2560;
-const unsigned int SCR_HEIGHT = 1440;
+const unsigned int SCR_WIDTH = 1920;
+const unsigned int SCR_HEIGHT = 1080;
 const float fixedDt = 1.0f / 60.0f;
 
 // camera
@@ -184,6 +184,7 @@ int main() {
         p.acceleration = glm::vec3(0, -9.8f, 0);
         p.velocity = glm::vec3(randFloat(-2, 2), randFloat(-2, 2), randFloat(-2, 2));
         p.position = glm::vec3(randFloat(-2, 2), randFloat(-1.5, 2), randFloat(-2, 2));
+        p.iAcceleration = glm::vec3(0, -9.8f, 0);
         p.mass = 1.0f;
         p.radius = 0.043;
     }
@@ -205,6 +206,7 @@ int main() {
             for (auto& p : particles) {
                 p.position = glm::vec3(randFloat(-2, 2), randFloat(-1.5, 2), randFloat(-2, 2));
                 p.velocity = glm::vec3(randFloat(-2, 2), randFloat(-2, 2), randFloat(-2, 2));
+                p.acceleration = glm::vec3(0, -9.8f, 0);
                 // may want to find a way later to store initial values for each and
                 // reset them to that
             }
@@ -212,10 +214,9 @@ int main() {
 
         while (accumulator >= fixedDt) {
             for (auto& p2 : particles) {
-                // friction update
                 p2.updateParticle(p2, fixedDt);
                 // this simulates drag as of rn. can make functino later
-                p2.velocity *= 0.999f;
+                p2.velocity *= 0.998f;
             }
 
             for (size_t i = 0; i < particles.size(); ++i) {
@@ -226,9 +227,9 @@ int main() {
         
             // WIP 
             for (auto& p3 : particles) {
-                KineticFriction(p3, 0.02);
-                //std::cout << p3.acceleration.x << std::endl;
-                //std::cout << p3.acceleration.z << std::endl;
+                KineticFriction(p3, 0.01);
+                std::cout << "x: " << p3.acceleration.x << std::endl;
+                std::cout << "z: " << p3.acceleration.z << std::endl;
             }
             accumulator -= fixedDt;
         }
@@ -365,14 +366,20 @@ void ParticleCollision(Particle& p1, Particle& p2) {
     }
 }
 
-// friction function for when particles are sliding on the ground. NOT WORKY
+// friction function for when particles are sliding on the ground.
 void KineticFriction(Particle& p, float frictionCoefficient) {
-    // need a better way to calculate since this is something that is ongoing,
-    // meaning it really needs to be set once. Multiplying repeatedly actually makes it go to zero
-    // since it's being mutiplied by a small number over and over again.
-    if (p.position.y - p.radius <= -3) {
+
+    // ensures the particle is only under the force of friction if it's on the floor
+    if (p.position.y - p.radius >= -2.9999) {
+        p.acceleration = p.iAcceleration;
+        return;
+    }
+
+    if (p.position.y - p.radius < -2.9999) {
         p.position.y = -3.0f + p.radius;
-        p.acceleration.x *= -(p.mass * 9.8 * frictionCoefficient);
-        p.acceleration.z *= -(p.mass * 9.8 * frictionCoefficient);
+
+        glm::vec3 temp = glm::normalize(p.velocity);
+        p.acceleration.x = -1 * temp.x * (9.8 * frictionCoefficient);
+        p.acceleration.z = -1 * temp.z * (9.8 * frictionCoefficient);
     }
 } 
